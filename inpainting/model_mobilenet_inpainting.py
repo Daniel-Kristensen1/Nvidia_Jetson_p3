@@ -13,7 +13,7 @@ class MobileNetInpainting(nn.Module):
         super().__init__()
 
         # Get the MobileNetV2 as an encoder
-        base = mobilenet_v2(weights=None)
+        base = mobilenet_v2(pretrained=None)
         self.encoder = base.features # convolutionelle lag
 
         # We will replace the first conv, so we can get 4 channels instead of 3

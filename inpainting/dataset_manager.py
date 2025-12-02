@@ -212,3 +212,14 @@ def make_sample(image_paths: Sequence[str], mask_paths: Sequence[str], idx: int,
 #print(sample["mask"].shape)    # (1, H, W)
 #print(sample["image_path"])
 #print(sample["mask_path"])
+
+
+test_img_path = r"C:\Users\Daniel K\Desktop\test.png"
+
+# create a valid image
+Image.new("RGB", (64, 64), "blue").save(test_img_path)
+
+# try your load function
+
+img = load_image(test_img_path)
+print("Loaded:", img)
