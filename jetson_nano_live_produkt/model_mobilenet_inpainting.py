@@ -2,6 +2,21 @@ import torch
 import torch.nn as nn
 from torchvision.models import mobilenet_v2
 
+def _create_mobilenet_backbone():
+    """
+    Håndter forskel mellem nye og gamle torchvision-versioner.
+
+    Nye versioner: mobilenet_v2(weights=None)
+    Gamle versioner (som på Jetson): mobilenet_v2(pretrained=False)
+    """
+    try:
+        # Nye torchvision (0.13+)
+        return mobilenet_v2(weights=None)
+    except TypeError:
+        # Ældre torchvision (som på Jetson Nano)
+        return mobilenet_v2(pretrained=False)
+
+
 class MobileNetInpainting(nn.Module):
     """
     Inpainting model - based om MobileNetV2 encoder + simpel decoder
@@ -13,8 +28,8 @@ class MobileNetInpainting(nn.Module):
         super().__init__()
 
         # Get the MobileNetV2 as an encoder
-        base = mobilenet_v2(pretrained=None)
-        self.encoder = base.features # convolutionelle lag
+        base = _create_mobilenet_backbone()
+        self.encoder = base.features  # convolutionelle lag
 
         # We will replace the first conv, so we can get 4 channels instead of 3
         first_conv = self.encoder[0][0] # Conv2d first block
