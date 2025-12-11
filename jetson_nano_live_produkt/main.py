@@ -8,7 +8,11 @@ import realtime_inpainting
 
 
 def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if not torch.cuda.is_available():
+        print("❌ CUDA ikke tilgængelig. Dette script skal køres på en Jetson-enhed.")
+        return
+
+    device = torch.device("cuda")
     print("➡ Device:", device)
 
     # --- Model selection ---
