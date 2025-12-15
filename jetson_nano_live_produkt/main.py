@@ -9,7 +9,7 @@ import realtime_inpainting
 
 def main():
     if not torch.cuda.is_available():
-        print("❌ CUDA ikke tilgængelig. Dette script skal køres på en Jetson-enhed.")
+        print("CUDA ikke tilgængelig. Dette script skal køres på en Jetson-enhed.")
         return
 
     device = torch.device("cuda")
@@ -111,4 +111,5 @@ def main():
 
 
 if __name__ == "__main__":
+    torch.backends.cudnn.benchmark = True # Anbefalet af chatGPT - Skal læses op på.
     main()

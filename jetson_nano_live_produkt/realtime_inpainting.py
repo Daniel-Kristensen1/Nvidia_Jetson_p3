@@ -76,10 +76,6 @@ def load_models(device, u2net_weights, inpaint_weights, inpaint_type, use_fp16=F
     net_inpaint.load_state_dict(state)
     net_inpaint.eval()
 
-    if use_fp16 and device.type == "cuda":
-        net_seg = net_seg.half()
-        net_inpaint = net_inpaint.half()
-        print("✨ Models converted to FP16")
 
     print("Modeller klar.")
     return net_seg, net_inpaint
@@ -109,15 +105,13 @@ def run_pipeline(frame, net_seg, net_inpaint, device, image_size, use_fp16=False
 
     # ----- U2NET (segmentering) -----
     u2_input = frame_to_u2net_input(rgb)  # (1,3,H,W), float32
-    u2_input = u2_input.to(device)
 
-    if use_fp16 and device.type == "cuda":
-        u2_input = u2_input.half()
-    else:
-        u2_input = u2_input.float()
+    # ----- Fp16/fp32 handeling -----
+    dtype = torch.float16 if use_fp16 else torch.float32
 
-    with torch.no_grad():
-        d1, *_ = net_seg(u2_input)          # U2NET output
+    u2_input = u2_input.to(device=device, dtype=dtype)
+    with torch.no_grad(), torch.cuda.amp.autocast(enabled=use_fp16):
+        d1, *_ = net_seg(u2_input)     # U2NET output
         pred = normalize_pred(d1[:, 0, :, :])
 
     pred_np = (pred.squeeze().float().cpu().numpy() * 255.0).astype(np.uint8)
@@ -139,20 +133,22 @@ def run_pipeline(frame, net_seg, net_inpaint, device, image_size, use_fp16=False
     masked_image = make_masked_image(image_tensor, mask_tensor)
     model_input  = build_model_input(masked_image, mask_tensor).unsqueeze(0)  # (1,4,H,W)
 
-    # Flyt til device + cast til rette precision
-    model_input = model_input.to(device)
-    if use_fp16 and device.type == "cuda":
-        model_input = model_input.half()
-    else:
-        model_input = model_input.float()
+    model_input = model_input.to(device=device, dtype=dtype)
 
     # ----- Inpainting -----
-    with torch.no_grad():
-        output = net_inpaint(model_input)[0]   # (3,H,W) på device
+    with torch.no_grad(), torch.cuda.amp.autocast(enabled=use_fp16):
+        output = net_inpaint(model_input)[0]
+
 
     # Tilbage til CPU + uint8 BGR for visning
-    output = output.float().clamp(0, 1).cpu()
-    out_np  = (output.permute(1, 2, 0).numpy() * 255.0).astype(np.uint8)
+    output = output.clamp(0, 1)
+    out_np = (
+        output.permute(1, 2, 0)
+            .detach()
+            .cpu()
+            .float()
+            .numpy() * 255.0
+    ).astype(np.uint8)
     out_bgr = cv2.cvtColor(out_np, cv2.COLOR_RGB2BGR)
     return out_bgr
 
